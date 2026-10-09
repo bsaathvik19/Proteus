@@ -560,6 +560,7 @@ _SERVE_CMD_ALLOWLIST = {
     "python", "python3",
     "sglang", "lmdeploy",
     "node", "npx",
+    "mlx_lm.server", "mlx_lm", "mlx-lm",
 }
 
 
@@ -1057,6 +1058,11 @@ def _diagnose_serve_output(text: str) -> dict | None:
             r"llama-server.*command not found|llama\.cpp.*not found|No module named.*llama_cpp|No module named 'starlette_context'|git: command not found|cmake: command not found",
             "llama.cpp / llama-cpp-python dependencies are missing.",
             [{"label": "install llama.cpp dependencies or llama-cpp-python[server]", "op": "dependency", "package": "llama-cpp-python[server]"}],
+        ),
+        (
+            r"mlx_lm.*command not found|No module named ['\"]?mlx_lm['\"]?",
+            "MLX serving requires the mlx-lm package on Apple Silicon.",
+            [{"label": "install mlx-lm in Cookbook Dependencies", "op": "dependency", "package": "mlx-lm"}],
         ),
         (
             r"No GGUF found on this host|no \.gguf file|No GGUF file found",

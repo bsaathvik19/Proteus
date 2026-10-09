@@ -309,12 +309,14 @@ dist_names={{
     'vllm':['vllm'],
     'llama_cpp':['llama-cpp-python'],
     'sglang':['sglang'],
+    'mlx_lm':['mlx-lm','mlx'],
     'diffusers':['diffusers','torch'],
     'hf_transfer':['hf-transfer','hf_transfer'],
 }}
 bin_names={{
     'vllm':['vllm'],
     'llama_cpp':['llama-server'],
+    'mlx_lm':['mlx_lm.server','mlx_lm'],
 }}
 
 def add_user_install_bins_to_path():
@@ -1035,6 +1037,13 @@ def setup_shell_routes() -> APIRouter:
                 "name": "vllm",
                 "pip": "vllm",
                 "desc": "High-throughput LLM serving engine",
+                "category": "LLM",
+                "target": "remote",
+            },
+            {
+                "name": "mlx_lm",
+                "pip": "mlx-lm",
+                "desc": "Apple MLX native LLM serving for Apple Silicon",
                 "category": "LLM",
                 "target": "remote",
             },

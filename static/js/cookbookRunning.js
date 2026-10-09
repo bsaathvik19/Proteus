@@ -1433,6 +1433,7 @@ function _parseServeCmdToFields(cmd) {
   const ex = (re) => { const m = cmd.match(re); return m ? m[1] : ''; };
   const fields = {
     backend: cmd.includes('llama_cpp') || cmd.includes('llama-server') ? 'llamacpp'
+      : cmd.includes('mlx') ? 'mlx'
       : cmd.includes('diffusion_server') ? 'diffusers'
       : cmd.includes('sglang') ? 'sglang'
       : cmd.includes('ollama') ? 'ollama' : 'vllm',

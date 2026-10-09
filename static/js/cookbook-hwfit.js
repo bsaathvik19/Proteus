@@ -1325,6 +1325,10 @@ export function _expandModelRow(row, modelData) {
         cmd += ` --context-length ${maxCtx}`;
         cmd += ` --mem-fraction-static ${gpuUtil}`;
         cmd += ' --trust-remote-code';
+      } else if (runBackend === 'mlx') {
+        cmd = `mlx_lm.server --model ${modelData.name} --host 0.0.0.0 --port ${port}`;
+        if (maxCtx) cmd += ` --max-tokens ${maxCtx}`;
+        cmd += ' --trust-remote-code';
       } else if (runBackend === 'llamacpp') {
         const dir = `"$HOME/.cache/huggingface/hub/models--${modelData.name.replace(/\//g, '--')}/snapshots"`;
         const ggufPath = `$({ find ${dir} -name '*-00001-of-*.gguf' 2>/dev/null | sort; find ${dir} -name '*.gguf' 2>/dev/null | sort; } | head -1)`;

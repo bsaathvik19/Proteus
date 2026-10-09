@@ -81,6 +81,20 @@ function _serveBackendWarning(model, repo, backend, fields = {}) {
       body: 'This model looks like GGUF. vLLM/SGLang expect HuggingFace safetensors-style repos. Choose llama.cpp/Ollama for GGUF, or download a safetensors model for vLLM/SGLang.',
     };
   }
+  const _nm = `${model?.repo_id || ''} ${repo || ''} ${model?.name || ''}`.toLowerCase();
+  const mlxLike = /\bmlx\b|mlx-|_mlx/i.test(_nm) || (model?.quant || '').toUpperCase().startsWith('MLX');
+  if (mlxLike && backend !== 'mlx') {
+    return {
+      title: 'MLX model requires MLX backend',
+      body: 'This model is packaged for Apple MLX. Select the MLX backend on Apple Silicon macOS to serve it.',
+    };
+  }
+  if (!mlxLike && backend === 'mlx') {
+    return {
+      title: 'MLX backend requires an MLX model',
+      body: 'The MLX backend is designed for Apple MLX models (e.g. mlx-community/* repos).',
+    };
+  }
   return null;
 }
 
@@ -127,6 +141,7 @@ async function _fetchServeRuntimePackage(panel, backend) {
     vllm: 'vllm',
     sglang: 'sglang',
     llamacpp: 'llama_cpp',
+    mlx: 'mlx_lm',
     diffusers: 'diffusers',
   };
   const packageName = packageByBackend[backend];
@@ -146,7 +161,7 @@ async function _fetchServeRuntimePackage(panel, backend) {
 }
 
 function _runtimeNoteText(backend, pkg, target) {
-  const labels = { vllm: 'vLLM', sglang: 'SGLang', llamacpp: 'llama.cpp', diffusers: 'Diffusers' };
+  const labels = { vllm: 'vLLM', sglang: 'SGLang', llamacpp: 'llama.cpp', mlx: 'MLX', diffusers: 'Diffusers' };
   const label = labels[backend] || backend;
   if (!pkg) return `${label} readiness unavailable for ${target.label}.`;
   const note = pkg.status_note || pkg.update_note || '';
@@ -531,15 +546,15 @@ function _rerenderCachedModels() {
       const detectedBackend = _detectBackend(m).backend;
       const _allowedBackends = new Set(_isWindows()
         ? ['llamacpp']
-        : (_isMetal() ? ['llamacpp', 'ollama'] : ['vllm', 'sglang', 'llamacpp', 'ollama', 'diffusers']));
+        : (_isMetal() ? ['llamacpp', 'mlx', 'ollama'] : ['vllm', 'sglang', 'llamacpp', 'ollama', 'diffusers']));
       const defaultBackend = (ss._forceBackend && ss.backend && _allowedBackends.has(ss.backend))
         ? ss.backend
         : detectedBackend;
       const savedMatchesBackend = !!ss._forceBackend || (ss.backend || 'vllm') === detectedBackend;
       const sv = (k, def) => (ss[k] !== undefined && savedMatchesBackend) ? ss[k] : def;
-      const defaultTp = defaultBackend === 'llamacpp' ? '1' : sv('tp', '1');
+      const defaultTp = (defaultBackend === 'llamacpp' || defaultBackend === 'mlx') ? '1' : sv('tp', '1');
       const detectedGpuIds = _allGpuIds(_getGpuToggleTotal?.());
-      const defaultGpus = defaultBackend === 'llamacpp'
+      const defaultGpus = (defaultBackend === 'llamacpp' || defaultBackend === 'mlx')
         ? '0'
         : (savedMatchesBackend && _hasOwn(ss, 'gpus') && String(ss.gpus || '').trim()
           ? ss.gpus
@@ -593,10 +608,10 @@ function _rerenderCachedModels() {
         ? [['llamacpp','llama.cpp']]
         : _isMetal()
         // Diffusers (diffusion_server.py) is CUDA-only — omit it on Metal.
-        ? [['llamacpp','llama.cpp'],['ollama','Ollama']]
+        ? [['llamacpp','llama.cpp'],['mlx','MLX'],['ollama','Ollama']]
         : [['vllm','vLLM'],['sglang','SGLang'],['llamacpp','llama.cpp'],['ollama','Ollama'],['diffusers','Diffusers']];
       const backendOpts = _backendChoices.map(([v,l]) => `<option value="${v}"${defaultBackend===v?' selected':''}>${l}</option>`).join('');
-      panelHtml += `<label>${_l('Backend','Inference engine: vLLM, SGLang, llama.cpp, Ollama, or Diffusers')}<select class="hwfit-sf" data-field="backend">${backendOpts}</select></label>`;
+      panelHtml += `<label>${_l('Backend','Inference engine: vLLM, SGLang, llama.cpp, MLX, Ollama, or Diffusers')}<select class="hwfit-sf" data-field="backend">${backendOpts}</select></label>`;
       panelHtml += `<input type="hidden" class="hwfit-sf" data-field="host" value="${esc(_es.remoteHost || '')}" />`;
       panelHtml += `<label>${_l('venv','Path to Python venv or conda env activate script')}<input type="text" class="hwfit-sf hwfit-sf-wide" data-field="venv" value="${esc(sv('venv', _es.envPath || _srvVenv || ''))}" placeholder="~/venv" /></label>`;
       const defaultPort = defaultBackend === 'ollama' ? '11434' : _nextAvailablePort();
@@ -631,7 +646,7 @@ function _rerenderCachedModels() {
       // TP / Context / GPU / GPU Mem / Max Seqs / Dtype. Everything else
       // (Swap, KV Cache, Attention backend, Env vars, llama.cpp batch/ubatch)
       // moved to the Advanced fold below to keep this row scannable.
-      panelHtml += `<div class="hwfit-serve-row hwfit-backend-vllm hwfit-backend-sglang hwfit-backend-llamacpp hwfit-backend-ollama">`;
+      panelHtml += `<div class="hwfit-serve-row hwfit-backend-vllm hwfit-backend-sglang hwfit-backend-llamacpp hwfit-backend-mlx hwfit-backend-ollama">`;
       panelHtml += `<label class="hwfit-backend-vllm hwfit-backend-sglang">${_l('TP','Tensor Parallelism — split model across N GPUs')}<select class="hwfit-sf" data-field="tp">${tpOpts}</select></label>`;
       // ctx resets to the model's max on every panel open (the real ctx slider
       // lives in the Scan/Download toolbar — see cookbook.js .hwfit-ctx-control).
@@ -972,7 +987,7 @@ function _rerenderCachedModels() {
         const note = panel.querySelector('.hwfit-serve-runtime-note');
         if (!note) return;
         const backend = panel.querySelector('[data-field="backend"]')?.value || 'vllm';
-        if (!['vllm', 'sglang', 'llamacpp', 'diffusers'].includes(backend)) {
+        if (!['vllm', 'sglang', 'llamacpp', 'mlx', 'diffusers'].includes(backend)) {
           note.style.display = 'none';
           note.textContent = '';
           return;
@@ -1022,7 +1037,7 @@ function _rerenderCachedModels() {
           });
         } else {
           const fields = {
-            backend: cmd.includes('llama_cpp') || cmd.includes('llama-server') ? 'llamacpp' : cmd.includes('diffusion_server') ? 'diffusers' : cmd.includes('sglang') ? 'sglang' : cmd.includes('ollama') ? 'ollama' : 'vllm',
+            backend: cmd.includes('llama_cpp') || cmd.includes('llama-server') ? 'llamacpp' : cmd.includes('mlx') ? 'mlx' : cmd.includes('diffusion_server') ? 'diffusers' : cmd.includes('sglang') ? 'sglang' : cmd.includes('ollama') ? 'ollama' : 'vllm',
             port: _ex(/--port\s+(\d+)/) || '8000',
             tp: _ex(/--tensor-parallel-size\s+(\d+)/) || '1',
             ctx: _ex(/--max-model-len\s+(\d+)/) || _ex(/--n_ctx\s+(\d+)/) || _ex(/-c\s+(\d+)/) || '8192',

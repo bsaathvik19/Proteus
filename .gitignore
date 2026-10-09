@@ -1,0 +1,33 @@
+# Environments
+venv/
+.venv/
+env/
+
+# Python cache & build artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+
+# Local data & secrets
+.env
+.env.*
+!.env.example
+data/
+logs/
+*.log
+*.db
+*.sqlite
+*.sqlite3
+
+# Dependencies & caches
+node_modules/
+.playwright-mcp/
+
+# OS & Editor
+.DS_Store
+.vscode/
+.idea/

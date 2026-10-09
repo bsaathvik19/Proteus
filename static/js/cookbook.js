@@ -316,6 +316,9 @@ export function _detectBackend(model) {
   const isAppleSilicon = ['metal', 'mps', 'apple'].includes(sysBackend);
   const _nm = `${model.repo_id || ''} ${model.path || ''} ${model.name || ''}`.toLowerCase();
   if (/\bmlx\b|mlx-|_mlx/i.test(_nm) || q.startsWith('MLX')) {
+    if (isAppleSilicon || _isMetal()) {
+      return { backend: 'mlx', label: 'MLX' };
+    }
     return { backend: 'unsupported', label: 'Unsupported' };
   }
   const isAwqLike = /^AWQ|^GPTQ|^NVFP4/.test(q) || ['FP8', 'FP4', 'MXFP4', 'NF4', 'INT4', 'INT8', 'W4A16', 'W8A8', 'W8A16'].includes(q) || /\b(awq|gptq|fp8|fp4|nvfp4|mxfp4|nf4|int4|int8|w4a16|w8a8|w8a16)\b/i.test(_nm);
@@ -607,6 +610,14 @@ export function _buildServeCmd(f, modelName, backend) {
     if (f.diff_attention_slicing) cmd += ' --attention-slicing';
     if (f.diff_vae_slicing) cmd += ' --vae-slicing';
     if (f.diff_harmonize_gpu) cmd += ` --harmonize-gpu ${f.diff_harmonize_gpu}`;
+  } else if (backend === 'mlx') {
+    const _mlxBin = _venvBin ? `${_venvBin}mlx_lm.server` : 'mlx_lm.server';
+    cmd += `${_mlxBin} --model ${modelName} --host 0.0.0.0 --port ${f.port || '8000'}`;
+    if (f.trust_remote) cmd += ' --trust-remote-code';
+    if (f.ctx) cmd += ` --max-tokens ${f.ctx}`;
+    if (f.temp) cmd += ` --temp ${f.temp}`;
+    if (f.top_p) cmd += ` --top-p ${f.top_p}`;
+    if (f.kv_bits) cmd += ` --kv-bits ${f.kv_bits}`;
   }
   return cmd;
 }

@@ -453,6 +453,14 @@ export const ERROR_PATTERNS = [
     ],
   },
   {
+    pattern: /mlx_lm.*command not found|No module named ['"]?mlx_lm['"]?/i,
+    message: 'MLX serving requires mlx-lm on Apple Silicon. Install mlx-lm from Cookbook → Dependencies.',
+    fixes: [
+      { label: 'Open Dependencies', action: () => _openCookbookDependencies('mlx_lm') },
+      { label: 'Copy install command', action: () => _copyText('python3 -m pip install mlx-lm') },
+    ],
+  },
+  {
     pattern: /Triton kernels.*Failed to import|cannot import name '\w+' from 'triton_kernels/i,
     message: 'Triton kernels version mismatch. Non-fatal warning — model will still run, just without optimized MoE kernels.',
     fixes: [
