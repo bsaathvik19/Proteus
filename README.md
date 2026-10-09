@@ -117,11 +117,6 @@ Scoped API tokens let **Claude Code** and **Codex** terminal sessions reach into
 
 ---
 
-## More views
-
-> _Want to show more? Drop additional captures in `docs/screenshots/` and link them here — the **Lens** image editor, a **Dive** research report, and the **Dock** "What Fits?" tab all make great showcases._
-
----
 
 ## Quick start
 
