@@ -1,0 +1,18 @@
+# Copy to /etc/systemd/system/proteus-ui.service
+# Edit User, WorkingDirectory, and ExecStart paths to match your setup
+[Unit]
+Description=Proteus UI
+After=network.target
+
+[Service]
+Type=simple
+# CHANGE THESE to match your user and install path:
+User=YOURUSER
+WorkingDirectory=/home/YOURUSER/proteus-ui
+ExecStart=/home/YOURUSER/proteus-ui/venv/bin/uvicorn app:app --port 7000 --host 0.0.0.0
+Restart=always
+RestartSec=3
+EnvironmentFile=-/home/YOURUSER/proteus-ui/.env
+
+[Install]
+WantedBy=multi-user.target
